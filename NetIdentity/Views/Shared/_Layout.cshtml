@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - NetIdentity</title>
+    <link rel="stylesheet" href="/css/site.css" />
+</head>
+<body>
+    <header>
+        <nav>
+            <ul class="menu">
+                <li><a asp-controller="Home" asp-action="Index">Home</a></li>
+                <li><a asp-controller="Products" asp-action="Index">Products</a></li>
+                <li><a asp-controller="Orders" asp-action="Index">Orders</a></li>
+
+                @if (User.Identity.IsAuthenticated)
+                {
+                    <li>👋 @User.Identity.Name</li>
+                    <li><a asp-controller="Dashboard" asp-action="Index">Dashboard</a></li>
+                    <li>
+                        <form asp-controller="Account" asp-action="Logout" method="post">
+                            <button type="submit">Logout</button>
+                        </form>
+                    </li>
+                }
+                else
+                {
+                    <li><a asp-controller="Account" asp-action="Login">Login</a></li>
+                    <li><a asp-controller="Account" asp-action="Register">Register</a></li>
+                }
+            </ul>
+        </nav>
+
+        <style>
+            .menu {
+                list-style: none;
+                display: flex;
+                gap: 10px;
+            }
+
+                .menu li::after {
+                    content: "|";
+                    margin-left: 10px;
+                    color: #999;
+                }
+
+                .menu li:last-child::after {
+                    content: "";
+                }
+        </style>
+
+    </header>
+    <main role="main" class="pb-3">
+        @RenderBody()
+    </main>
+    <footer>
+        <hr />
+        <p>&copy; @DateTime.UtcNow.Year - NetIdentity</p>
+    </footer>
+    @RenderSection("Scripts", required: false)
+</body>
+</html>
