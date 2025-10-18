@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using NetIdentity.Data;
+using NetIdentity.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,11 +12,59 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
-    .AddEntityFrameworkStores<ApplicationDbContext>();
+//builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
+//    .AddEntityFrameworkStores<ApplicationDbContext>();
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+{
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequiredLength = 6;
+})
+.AddEntityFrameworkStores<ApplicationDbContext>()
+.AddDefaultTokenProviders();
+
+builder.Services.AddAuthorization(options => {
+    options.AddPolicy("GeneroFemenino", policy => policy.RequireClaim("genero", "Femenino"));
+    options.AddPolicy("GeneroMasculino", policy => policy.RequireClaim("genero", "Masculino"));
+    options.AddPolicy("GeneroNoEspecificado", policy => policy.RequireClaim("genero", "No especificado"));
+
+options.AddPolicy("menoresEdad", policy =>
+        policy.RequireAssertion(context =>
+        {
+            var user = context.User;
+            if (user.Identity?.IsAuthenticated == true)
+            {
+                var birthDateClaim = user.FindFirst("FechaNacimiento");
+                if (birthDateClaim != null && DateTime.TryParse(birthDateClaim.Value, out DateTime birthDate))
+                {
+                    var edad = DateTime.Today.Year - birthDate.Year;
+                    if (birthDate.Date > DateTime.Today.AddYears(-edad)) edad--;
+                    return edad < 18;
+                }
+            }
+            return false;
+        }));
+
+    options.AddPolicy("SoloAdmin", policy => policy.RequireRole("Admin"));
+
+    options.AddPolicy("AdminOUsuario", policy =>
+        policy.RequireRole("Admin", "Usuario"));
+
+});
+
+
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    await SeedData.Initialize(services);
+}
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -38,6 +88,6 @@ app.UseAuthorization();
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
-app.MapRazorPages();
+//app.MapRazorPages();
 
 app.Run();

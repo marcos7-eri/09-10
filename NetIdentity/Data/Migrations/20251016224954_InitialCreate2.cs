@@ -2,10 +2,10 @@
 
 #nullable disable
 
-namespace NetIdentity.Migrations
+namespace NetIdentity.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class UpdateInitialMigration : Migration
+    public partial class InitialCreate2 : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

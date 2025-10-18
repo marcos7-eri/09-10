@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using NetIdentity.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace NetIdentity.Controllers
 {
@@ -18,6 +19,9 @@ namespace NetIdentity.Controllers
             return View();
         }
 
+        //[Authorize(Roles = "Admin, Administrador")]
+        //[Authorize(Policy = "MenoresEdad")]
+        [Authorize]
         public IActionResult Privacy()
         {
             return View();

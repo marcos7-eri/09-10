@@ -1,58 +1,42 @@
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using NetIdentity.Models.ViewModels;
+using NetIdentity.Models;
 
 namespace NetIdentity.Controllers
 {
     public class AccountController : Controller
     {
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly SignInManager<IdentityUser> _signInManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public AccountController(UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager)
+        public AccountController(
+            SignInManager<ApplicationUser> signInManager,
+            UserManager<ApplicationUser> userManager)
         {
-            _userManager = userManager;
             _signInManager = signInManager;
+            _userManager = userManager;
         }
 
         [HttpGet]
-        public IActionResult Register() => View();
+        public IActionResult Login()
+        {
+            return View();
+        }
 
         [HttpPost]
-        public async Task<IActionResult> Register(RegisterViewModel model)
+        public async Task<IActionResult> Login(string email, string password)
         {
-            if (!ModelState.IsValid) return View(model);
-
-            var user = new IdentityUser { UserName = model.Email, Email = model.Email };
-            var result = await _userManager.CreateAsync(user, model.Password);
-
-            if (result.Succeeded)
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user != null)
             {
-                await _signInManager.SignInAsync(user, isPersistent: false);
-                return RedirectToAction("Index", "Dashboard");
+                var result = await _signInManager.PasswordSignInAsync(user, password, false, false);
+                if (result.Succeeded)
+                {
+                    return RedirectToAction("Index", "Home");
+                }
             }
-
-            foreach (var error in result.Errors)
-                ModelState.AddModelError(string.Empty, error.Description);
-
-            return View(model);
-        }
-
-        [HttpGet]
-        public IActionResult Login() => View();
-
-        [HttpPost]
-        public async Task<IActionResult> Login(LoginViewModel model)
-        {
-            if (!ModelState.IsValid) return View(model);
-
-            var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, model.RememberMe, lockoutOnFailure: false);
-
-            if (result.Succeeded)
-                return RedirectToAction("Index", "Dashboard");
-
-            ModelState.AddModelError(string.Empty, "Credenciales inválidas");
-            return View(model);
+            ViewBag.Error = "Email o contraseña incorrectos";
+            return View();
         }
 
         [HttpPost]
@@ -61,5 +45,50 @@ namespace NetIdentity.Controllers
             await _signInManager.SignOutAsync();
             return RedirectToAction("Index", "Home");
         }
+
+        [HttpGet]
+        public IActionResult Register()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Register(string email, string password, DateTime fechaNacimiento, string nombreCompleto)
+        {
+            var user = new ApplicationUser
+            {
+                UserName = email,
+                Email = email,
+                FechaNacimiento = fechaNacimiento,
+                NombreCompleto = nombreCompleto
+            ,
+                genero = (Request.Form["genero"].ToString() ?? "No especificado")};
+
+            var result = await _userManager.CreateAsync(user, password);
+            if (result.Succeeded)
+            {
+                await _userManager.AddClaimAsync(user,
+                    new System.Security.Claims.Claim("FechaNacimiento", fechaNacimiento.ToString("yyyy-MM-dd")));
+
+                // Add genero claim
+                await _userManager.AddClaimAsync(user,
+                    new System.Security.Claims.Claim("genero", user.genero ?? "No especificado"));
+
+                await _signInManager.SignInAsync(user, isPersistent: false);
+                return RedirectToAction("Index", "Home");
+            }
+
+            foreach (var error in result.Errors)
+            {
+                ModelState.AddModelError(string.Empty, error.Description);
+            }
+            return View();
+        }
+
+        public IActionResult AccessDenied()
+        {
+            return View();
+        }
     }
+
 }
